@@ -85,14 +85,23 @@ def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
     if i!=174:
       nib_ptr[j]=w3
       j+=1
-  csum[0]=c1&0x3F
-  csum[1]=c2&0x3F
-  csum[2]=c3&0x3F
-  csum[3]=c4&0x3F
+  # reverse to file write order
+  csum[3]=c1&0x3F
+  csum[2]=c2&0x3F
+  csum[1]=c3&0x3F
+  csum[0]=c4&0x3F
 
+conv_dataIn=bytearray(524)
+conv_nibOut=bytearray(699)
+conv_dataChecksum=bytearray(4)
 def convert_dsk2mac():
   rfs=open("Disk605.dsk","rb")
   wfs=open("Disk605.mac","wb")
+
+  dataIn=memoryview(conv_dataIn)
+  nibOut=memoryview(conv_nibOut)
+  dataChecksum=memoryview(conv_dataChecksum)
+
   #rfs.readinto(dsksector)
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs_Length=819200 # TODO from file
@@ -101,9 +110,60 @@ def convert_dsk2mac():
   track=0
   sectorInTrack=0
   offset=0
-  
+  while offset<rfs_Length:
+    for i in range(14*4): # TODO micropython optimize
+      wfs.write(bytearray([0xFF]))
+    trackLow=track&0x3F
+    trackHigh=(side<<5)|(track>>6)
+    checksum=(trackLow^sectorInTrack^trackHigh^format)&0x3F
+    wfs.write(bytearray([
+      0xd5,0xaa,0x96,
+      sony_to_disk_byte[trackLow],
+      sony_to_disk_byte[sectorInTrack],
+      sony_to_disk_byte[trackHigh],
+      sony_to_disk_byte[format],
+      sony_to_disk_byte[checksum],
+      0xde,0xaa]))
+    # More syncs
+    wfs.write(bytearray([0xff,0xff,0xff,0xff,0xff]))
+    # Data block
+    wfs.write(bytearray([0xd5,0xaa,0xad,sony_to_disk_byte[sectorInTrack]]))
+    nibCount=699
+    # get the tags and sector data
+    for i in range(12):
+      dataIn[i]=0
+    rfs.readinto(dataIn[12:524]) # FIXME micropython incompatible
+    # convert the sector data
+    mess_sony_nibblize35(dataIn, nibOut, dataChecksum)
+    # in-place sony_to_disk_byte
+    for i in range(nibCount):
+      nibOut[i]=sony_to_disk_byte[nibOut[i]]
+    for i in range(4):
+      dataChecksum[i]=sony_to_disk_byte[dataChecksum[i]]
+    # write the sector data and the checksum
+    wfs.write(nibOut)
+    wfs.write(dataChecksum)
+    # data block trailer
+    wfs.write(bytearray([0xde,0xaa,0xff]))
+    # padding to make a power of 2 size for encoded sectors
+    for i in range(243): # TODO micropython optimize
+      wfs.write(bytearray([0xFF]))
+    # next sector
+    offset+=512
+    sectorInTrack+=1
+    if sectorInTrack==12-track//16:
+      sectorInTrack=0
+      if numSides==2 and side==0:
+        side=1
+      else:
+        track+=1
+        side=0
+  wfs.close()
+  rfs.close()
 
-mess_sony_nibblize35(dsksector,macsector,csum)
+convert_dsk2mac()
+#print(conv_dataIn)
+#mess_sony_nibblize35(dsksector,macsector,csum)
 # print(dsksector,macsector,csum)
-print(csum)
+#print(csum)
 
