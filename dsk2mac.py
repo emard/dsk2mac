@@ -94,9 +94,9 @@ def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
 conv_dataIn=bytearray(524)
 conv_nibOut=bytearray(699)
 conv_dataChecksum=bytearray(4)
-def convert_dsk2mac():
-  rfs=open("Disk605.dsk","rb")
-  wfs=open("Disk605.mac","wb")
+def convert_dsk2mac(src,dst):
+  rfs=open(src,"rb")
+  wfs=open(dst,"wb")
 
   dataIn=memoryview(conv_dataIn)
   nibOut=memoryview(conv_nibOut)
@@ -104,7 +104,9 @@ def convert_dsk2mac():
 
   #rfs.readinto(dsksector)
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
-  rfs_Length=819200 # TODO from file
+  rfs.seek(0,2) # end of file
+  rfs_Length=rfs.tell()
+  rfs.seek(0) # rewind to start of file
   numSides=rfs_Length//409600
   side=0
   track=0
@@ -161,9 +163,5 @@ def convert_dsk2mac():
   wfs.close()
   rfs.close()
 
-convert_dsk2mac()
-#print(conv_dataIn)
-#mess_sony_nibblize35(dsksector,macsector,csum)
-# print(dsksector,macsector,csum)
-#print(csum)
-
+convert_dsk2mac("Disk605.dsk","Disk605.mac") # 800K
+#convert_dsk2mac("Space_Invaders.dsk","Space_Invaders.mac") # 400K
