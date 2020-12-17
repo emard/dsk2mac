@@ -99,22 +99,22 @@ def init_nibsOut():
   for i in range(1024):
     conv_nibsOut[i]=0xFF
   # 0-55: 56*0xFF sync
-  conv_nibsOut[56]=0xd5
-  conv_nibsOut[57]=0xaa
+  conv_nibsOut[56]=0xD5
+  conv_nibsOut[57]=0xAA
   conv_nibsOut[58]=0x96
   # 59-63: track/sector/format/checksum
-  conv_nibsOut[64]=0xde
-  conv_nibsOut[65]=0xaa
+  conv_nibsOut[64]=0xDE
+  conv_nibsOut[65]=0xAA
   # 66-70: 0xFF sync
-  conv_nibsOut[71]=0xd5
-  conv_nibsOut[72]=0xaa
-  conv_nibsOut[73]=0xad
+  conv_nibsOut[71]=0xD5
+  conv_nibsOut[72]=0xAA
+  conv_nibsOut[73]=0xAD
   # 74: sector in track
   # 75-777: nibblized sector
   # 778-780: data block trailer
-  conv_nibsOut[778]=0xde
-  conv_nibsOut[779]=0xaa
-  #conv_nibsOut[780]=0xff   
+  conv_nibsOut[778]=0xDE
+  conv_nibsOut[779]=0xAA
+  #conv_nibsOut[780]=0xFF   
   # 781-1024: 243*0xFF padding sync
 init_nibsOut()
 
