@@ -4,7 +4,6 @@
 # AUTHOR=EMARD
 # LICENSE=BSD
 
-#from micropython import const, alloc_emergency_exception_buf
 from uctypes import addressof,bytearray_at
 
 sony_to_disk_byte = bytearray([
@@ -150,14 +149,13 @@ def convert_dsk2mac(rfs,wfs):
     nibsOut[61]=s2d[trackHigh]
     nibsOut[62]=s2d[format]
     nibsOut[63]=s2d[checksum]
-    # Data block
+    # data block
     nibsOut[74]=s2d[sectorInTrack]    
     # get the tags and sector data
     rfs.readinto(conv_dataInrd)
     # convert the sector data
     sony_nibblize35(conv_dataIn,conv_nibsOut,75)
     wfs.write(conv_nibsOut)
-    #return
     # next sector
     offset+=512
     sectorInTrack+=1
