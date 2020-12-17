@@ -97,15 +97,10 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset:int):
   j+=1
   nib_ptr[j]=s2d[c1&0x3F]
 
-conv_dataIn=bytearray(524) # filled with 0
-# trick to readinto at offset 12
-conv_dataInrd=memoryview(conv_dataIn)
-conv_dataInrd=memoryview(conv_dataInrd[12:524])
-
-conv_nibsOut=bytearray(1024)
+# nibsOut=bytearray(1024)
 @micropython.viper
-def init_nibsOut():
-  p8n=ptr8(addressof(conv_nibsOut))
+def init_nibsOut(nibsOut):
+  p8n=ptr8(addressof(nibsOut))
   # 56+19+703+3+243=1024
   for i in range(1024):
     p8n[i]=0xFF
@@ -127,7 +122,6 @@ def init_nibsOut():
   p8n[779]=0xAA
   #p8n[780]=0xFF   
   # 781-1024: 243*0xFF padding sync
-init_nibsOut()
 
 # dsk=bytearray(524)
 # nib=bytearray(1024)
@@ -149,26 +143,3 @@ def convert_sector(dsk,nib,track:int,side:int,sector:int):
   nibsOut[74]=s2d[sector]    
   # convert the sector data
   sony_nibblize35(dsk,nib,75)
-
-@micropython.viper
-def convert_dsk2mac(rfs,wfs):
-  dataIn=ptr8(addressof(conv_dataIn))
-  nibsOut=ptr8(addressof(conv_nibsOut))
-  s2d=ptr8(addressof(sony_to_disk_byte))
-  format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
-  rfs.seek(0,2) # end of file
-  rfs_Length=int(rfs.tell())
-  rfs.seek(0) # rewind to start of file
-  numSides=rfs_Length//409600
-  for track in range(80):
-    for side in range(numSides):
-      for sector in range(12-track//16):
-        rfs.readinto(conv_dataInrd)
-        convert_sector(conv_dataIn,conv_nibsOut,track,side,sector)
-        wfs.write(conv_nibsOut)
-
-rfs=open("/sd/mac/disks/Disk605.dsk","rb")
-wfs=open("/sd/mac/disks/Disk605b.mac","wb")
-convert_dsk2mac(rfs,wfs)
-wfs.close()
-rfs.close()
