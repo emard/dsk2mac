@@ -91,9 +91,16 @@ def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
 
 conv_dataIn=bytearray(524)
 conv_nibOut=bytearray(699)
+conv_nibsecOut=bytearray(1024)
+for i in range(1024):
+  conv_nibsecOut[i]=0xFF
 conv_dataChecksum=bytearray(4)
 conv_ba56xFF=bytearray(56)
 conv_ba243xFF=bytearray(243)
+for i in range(56):
+  conv_ba56xFF[i]=0xFF
+for i in range(243):
+  conv_ba243xFF[i]=0xFF
 def convert_dsk2mac(src,dst):
   rfs=open(src,"rb")
   wfs=open(dst,"wb")
@@ -101,14 +108,6 @@ def convert_dsk2mac(src,dst):
   dataIn=memoryview(conv_dataIn)
   nibOut=memoryview(conv_nibOut)
   dataChecksum=memoryview(conv_dataChecksum)
-
-  ba56xFF=memoryview(conv_ba56xFF)
-  ba243xFF=memoryview(conv_ba243xFF)
-
-  for i in range(56):
-    ba56xFF[i]=0xFF
-  for i in range(243):
-    ba243xFF[i]=0xFF
 
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs.seek(0,2) # end of file
@@ -120,7 +119,7 @@ def convert_dsk2mac(src,dst):
   sectorInTrack=0
   offset=0
   while offset<rfs_Length:
-    wfs.write(ba56xFF)
+    wfs.write(conv_ba56xFF)
     trackLow=track&0x3F
     trackHigh=(side<<5)|(track>>6)
     checksum=(trackLow^sectorInTrack^trackHigh^format)&0x3F
@@ -154,7 +153,7 @@ def convert_dsk2mac(src,dst):
     # data block trailer
     wfs.write(bytearray([0xde,0xaa,0xff]))
     # padding to make a power of 2 size for encoded sectors
-    wfs.write(ba243xFF)
+    wfs.write(conv_ba243xFF)
     # next sector
     offset+=512
     sectorInTrack+=1
@@ -168,5 +167,5 @@ def convert_dsk2mac(src,dst):
   wfs.close()
   rfs.close()
 
-convert_dsk2mac("Disk605.dsk","Disk605.mac") # 800K
+convert_dsk2mac("Disk605.dsk","Disk605b.mac") # 800K
 #convert_dsk2mac("Space_Invaders.dsk","Space_Invaders.mac") # 400K
