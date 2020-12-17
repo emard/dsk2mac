@@ -5,7 +5,7 @@
 # LICENSE=BSD
 
 #from micropython import const, alloc_emergency_exception_buf
-from uctypes import addressof
+from uctypes import addressof,bytearray_at
 
 sony_to_disk_byte = bytearray([
     0x96, 0x97, 0x9A, 0x9B,  0x9D, 0x9E, 0x9F, 0xA6, # 0x00
@@ -97,6 +97,9 @@ def sony_nibblize35(dataIn_ba,nib_ptr_ba,offset:int):
   nib_ptr[j]=s2d[c1&0x3F]
 
 conv_dataIn=bytearray(524)
+conv_dataInrd=memoryview(conv_dataIn)
+conv_dataInrd=memoryview(conv_dataInrd[12:524])
+
 conv_nibsOut=bytearray(1024)
 @micropython.viper
 def init_nibsOut():
@@ -124,12 +127,13 @@ def init_nibsOut():
   # 781-1024: 243*0xFF padding sync
 init_nibsOut()
 
-#@micropython.viper
+@micropython.viper
 def convert_dsk2mac(rfs,wfs):
   # tmp storage
-  dataIn=memoryview(conv_dataIn)
-  nibsOut=memoryview(conv_nibsOut)
-
+  dataIn=ptr8(addressof(conv_dataIn))
+  #dataInrd=ptr8(addressof(conv_dataInrd))
+  nibsOut=ptr8(addressof(conv_nibsOut))
+  s2d=ptr8(addressof(sony_to_disk_byte))
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs.seek(0,2) # end of file
   rfs_Length=int(rfs.tell())
@@ -143,20 +147,19 @@ def convert_dsk2mac(rfs,wfs):
     trackLow=track&0x3F
     trackHigh=(side<<5)|(track>>6)
     checksum=(trackLow^sectorInTrack^trackHigh^format)&0x3F
-    nibsOut[59]=sony_to_disk_byte[trackLow]
-    nibsOut[60]=sony_to_disk_byte[sectorInTrack]
-    nibsOut[61]=sony_to_disk_byte[trackHigh]
-    nibsOut[62]=sony_to_disk_byte[format]
-    nibsOut[63]=sony_to_disk_byte[checksum]
+    nibsOut[59]=s2d[trackLow]
+    nibsOut[60]=s2d[sectorInTrack]
+    nibsOut[61]=s2d[trackHigh]
+    nibsOut[62]=s2d[format]
+    nibsOut[63]=s2d[checksum]
     # Data block
-    nibsOut[74]=sony_to_disk_byte[sectorInTrack]    
+    nibsOut[74]=s2d[sectorInTrack]    
     # get the tags and sector data
-    for i in range(12):
-      dataIn[i]=0
-    rfs.readinto(dataIn[12:524]) # FIXME viper incompatible
+    rfs.readinto(conv_dataInrd)
     # convert the sector data
-    sony_nibblize35(dataIn,nibsOut,75)
-    wfs.write(nibsOut)
+    sony_nibblize35(conv_dataIn,conv_nibsOut,75)
+    wfs.write(conv_nibsOut)
+    #return
     # next sector
     offset+=512
     sectorInTrack+=1
