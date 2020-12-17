@@ -112,7 +112,6 @@ def convert_dsk2mac(src,dst):
   for i in range(243):
     ba243xFF[i]=0xFF
 
-  #rfs.readinto(dsksector)
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs.seek(0,2) # end of file
   rfs_Length=rfs.tell()
