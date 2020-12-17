@@ -15,7 +15,6 @@ conv_nibsOut=bytearray(1024)
 @micropython.viper
 def convert_dsk2mac(rfs,wfs):
   dsk2mac.init_nibsOut(conv_nibsOut)
-  format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs.seek(0,2) # end of file
   rfs_Length=int(rfs.tell())
   rfs.seek(0) # rewind to start of file
