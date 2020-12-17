@@ -129,6 +129,27 @@ def init_nibsOut():
   # 781-1024: 243*0xFF padding sync
 init_nibsOut()
 
+# dsk=bytearray(524)
+# nib=bytearray(1024)
+# track=0-79, side=0-1, sector=0-11
+@micropython.viper
+def convert_sector(dsk,nib,track:int,side:int,sector:int):
+  nibsOut=ptr8(addressof(nib))
+  s2d=ptr8(addressof(sony_to_disk_byte))
+  format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
+  trackLow=track&0x3F
+  trackHigh=(side<<5)|(track>>6)
+  checksum=(trackLow^sector^trackHigh^format)&0x3F
+  nibsOut[59]=s2d[trackLow]
+  nibsOut[60]=s2d[sector]
+  nibsOut[61]=s2d[trackHigh]
+  nibsOut[62]=s2d[format]
+  nibsOut[63]=s2d[checksum]
+  # data block
+  nibsOut[74]=s2d[sector]    
+  # convert the sector data
+  sony_nibblize35(dsk,nib,75)
+
 @micropython.viper
 def convert_dsk2mac(rfs,wfs):
   dataIn=ptr8(addressof(conv_dataIn))
@@ -139,36 +160,12 @@ def convert_dsk2mac(rfs,wfs):
   rfs_Length=int(rfs.tell())
   rfs.seek(0) # rewind to start of file
   numSides=rfs_Length//409600
-  side=0
-  track=0
-  sectorInTrack=0
-  offset=0
-  while offset<rfs_Length:
-    trackLow=track&0x3F
-    trackHigh=(side<<5)|(track>>6)
-    checksum=(trackLow^sectorInTrack^trackHigh^format)&0x3F
-    nibsOut[59]=s2d[trackLow]
-    nibsOut[60]=s2d[sectorInTrack]
-    nibsOut[61]=s2d[trackHigh]
-    nibsOut[62]=s2d[format]
-    nibsOut[63]=s2d[checksum]
-    # data block
-    nibsOut[74]=s2d[sectorInTrack]    
-    # get the tags and sector data
-    rfs.readinto(conv_dataInrd)
-    # convert the sector data
-    sony_nibblize35(conv_dataIn,conv_nibsOut,75)
-    wfs.write(conv_nibsOut)
-    # next sector
-    offset+=512
-    sectorInTrack+=1
-    if sectorInTrack==12-track//16:
-      sectorInTrack=0
-      if numSides==2 and side==0:
-        side=1
-      else:
-        track+=1
-        side=0
+  for track in range(80):
+    for side in range(numSides):
+      for sector in range(12-track//16):
+        rfs.readinto(conv_dataInrd)
+        convert_sector(conv_dataIn,conv_nibsOut,track,side,sector)
+        wfs.write(conv_nibsOut)
 
 rfs=open("/sd/mac/disks/Disk605.dsk","rb")
 wfs=open("/sd/mac/disks/Disk605b.mac","wb")
