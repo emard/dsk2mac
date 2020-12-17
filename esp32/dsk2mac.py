@@ -4,7 +4,7 @@
 # AUTHOR=EMARD
 # LICENSE=BSD
 
-from uctypes import addressof,bytearray_at
+from uctypes import addressof
 
 sony_to_disk_byte = bytearray([
     0x96, 0x97, 0x9A, 0x9B,  0x9D, 0x9E, 0x9F, 0xA6, # 0x00
