@@ -22,9 +22,12 @@ nib1=bytearray(175)
 nib2=bytearray(175)
 nib3=bytearray(175)
 @micropython.viper
-def sony_nibblize35(dataIn_ba,nib_ptr_ba,offset:int):
+# dataIn_ba=bytearray(524)
+# dataOut_ba=bytearray(1024)
+# offset=75 (703 bytes written)
+def sony_nibblize35(dataIn_ba,dataOut_ba,offset:int):
   dataIn=ptr8(addressof(dataIn_ba))
-  nib_ptr=ptr8(addressof(nib_ptr_ba))
+  nib_ptr=ptr8(addressof(dataOut_ba))
   s2d=ptr8(addressof(sony_to_disk_byte))
   b1=ptr8(addressof(nib1))
   b2=ptr8(addressof(nib2))
