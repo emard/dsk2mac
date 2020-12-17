@@ -129,7 +129,7 @@ def convert_dsk2mac(src,dst):
 
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs.seek(0,2) # end of file
-  rfs_Length=rfs.tell()
+  rfs_Length=int(rfs.tell())
   rfs.seek(0) # rewind to start of file
   numSides=rfs_Length//409600
   side=0
