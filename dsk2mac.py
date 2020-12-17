@@ -142,12 +142,6 @@ def convert_dsk2mac(src,dst):
     rfs.readinto(dataIn[12:524]) # FIXME micropython incompatible
     # convert the sector data
     mess_sony_nibblize35(dataIn, nibOut, dataChecksum)
-    # in-place sony_to_disk_byte
-    #for i in range(nibCount):
-    #  nibOut[i]=sony_to_disk_byte[nibOut[i]]
-    #for i in range(4):
-    #  dataChecksum[i]=sony_to_disk_byte[dataChecksum[i]]
-    # write the sector data and the checksum
     wfs.write(nibOut)
     wfs.write(dataChecksum)
     # data block trailer
