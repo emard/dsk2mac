@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+# .dsk (409600/819200 bytes) to .mac (819200/1638400 bytes) converter
 
-# .dsk (819200 bytes) to .mac (1638400 bytes) decoder
+# AUTHOR=EMARD
+# LICENSE=BSD
 
 sony_to_disk_byte = bytearray([
     0x96, 0x97, 0x9A, 0x9B,  0x9D, 0x9E, 0x9F, 0xA6, # 0x00
@@ -12,10 +14,6 @@ sony_to_disk_byte = bytearray([
     0xED, 0xEE, 0xEF, 0xF2,  0xF3, 0xF4, 0xF5, 0xF6, # 0x30
     0xF7, 0xF9, 0xFA, 0xFB,  0xFC, 0xFD, 0xFE, 0xFF
 ])
-
-dsksector=bytearray(524)
-macsector=bytearray(2048)
-csum=bytearray(4)
 
 # nibblize35 tmp store
 nib1=bytearray(175)
