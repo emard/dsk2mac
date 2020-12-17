@@ -24,10 +24,10 @@ nib2=bytearray(175)
 nib3=bytearray(175)
 
 @micropython.viper
-def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
+def sony_nibblize35(dataIn_ba,nib_ptr_ba,offset:int):
   dataIn=ptr8(addressof(dataIn_ba))
   nib_ptr=ptr8(addressof(nib_ptr_ba))
-  csum=ptr8(addressof(csum_ba))
+  s2d=ptr8(addressof(sony_to_disk_byte))
   b1=ptr8(addressof(nib1))
   b2=ptr8(addressof(nib2))
   b3=ptr8(addressof(nib3))
@@ -70,7 +70,7 @@ def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
     j+=1
   c4=((c1&0xC0)>>6)|((c2&0xC0)>>4)|((c3&0xC0)>>2)
   b3[174]=0
-  j=0
+  j=offset # offset writing to dataOut
   for i in range(0,175):
     w1=b1[i]&0x3F
     w2=b2[i]&0x3F
@@ -78,23 +78,26 @@ def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
     w4 =(b1[i]&0xC0)>>2
     w4|=(b2[i]&0xC0)>>4
     w4|=(b3[i]&0xC0)>>6
-    nib_ptr[j]=w4
+    nib_ptr[j]=s2d[w4]
     j+=1
-    nib_ptr[j]=w1
+    nib_ptr[j]=s2d[w1]
     j+=1
-    nib_ptr[j]=w2
+    nib_ptr[j]=s2d[w2]
     j+=1
     if i!=174:
-      nib_ptr[j]=w3
+      nib_ptr[j]=s2d[w3]
       j+=1
-  # reverse to file write order
-  csum[3]=c1&0x3F
-  csum[2]=c2&0x3F
-  csum[1]=c3&0x3F
-  csum[0]=c4&0x3F
+  # checksum at j=offset+699
+  nib_ptr[j]=s2d[c4&0x3F]
+  j+=1
+  nib_ptr[j]=s2d[c3&0x3F]
+  j+=1
+  nib_ptr[j]=s2d[c2&0x3F]
+  j+=1
+  nib_ptr[j]=s2d[c1&0x3F]
 
 conv_dataIn=bytearray(524)
-conv_nibOut=bytearray(699)
+conv_nibOut=bytearray(703)
 conv_dataChecksum=bytearray(4)
 conv_ba56xFF=bytearray(56)
 for i in range(56):
@@ -107,7 +110,6 @@ def convert_dsk2mac(rfs,wfs):
   # tmp storage
   dataIn=memoryview(conv_dataIn)
   nibOut=memoryview(conv_nibOut)
-  dataChecksum=memoryview(conv_dataChecksum)
 
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs.seek(0,2) # end of file
@@ -140,15 +142,9 @@ def convert_dsk2mac(rfs,wfs):
       dataIn[i]=0
     rfs.readinto(dataIn[12:524]) # FIXME viper incompatible
     # convert the sector data
-    mess_sony_nibblize35(dataIn, nibOut, dataChecksum)
-    # in-place sony_to_disk_byte
-    for i in range(699):
-      nibOut[i]=sony_to_disk_byte[nibOut[i]]
-    for i in range(4):
-      dataChecksum[i]=sony_to_disk_byte[dataChecksum[i]]
+    sony_nibblize35(dataIn,nibOut,0)
     # write the sector data and the checksum
     wfs.write(nibOut)
-    wfs.write(dataChecksum)
     # data block trailer
     wfs.write(bytearray([0xde,0xaa,0xff]))
     # padding to make a power of 2 size for encoded sectors
