@@ -83,7 +83,7 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
     if i!=174:
       nib_ptr[j]=sony_to_disk_byte[w3]
       j+=1
-  # checksum at j=699
+  # checksum at j=offset+699
   nib_ptr[j]=sony_to_disk_byte[c4&0x3F]
   j+=1
   nib_ptr[j]=sony_to_disk_byte[c3&0x3F]
