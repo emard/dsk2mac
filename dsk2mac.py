@@ -95,26 +95,27 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
 conv_dataIn=bytearray(524)
 conv_nibsOut=bytearray(1024)
 def init_nibsOut():
+  p8n=memoryview(conv_nibsOut)
   # 56+19+703+3+243=1024
   for i in range(1024):
-    conv_nibsOut[i]=0xFF
+    p8n[i]=0xFF
   # 0-55: 56*0xFF sync
-  conv_nibsOut[56]=0xD5
-  conv_nibsOut[57]=0xAA
-  conv_nibsOut[58]=0x96
+  p8n[56]=0xD5
+  p8n[57]=0xAA
+  p8n[58]=0x96
   # 59-63: track/sector/format/checksum
-  conv_nibsOut[64]=0xDE
-  conv_nibsOut[65]=0xAA
+  p8n[64]=0xDE
+  p8n[65]=0xAA
   # 66-70: 0xFF sync
-  conv_nibsOut[71]=0xD5
-  conv_nibsOut[72]=0xAA
-  conv_nibsOut[73]=0xAD
+  p8n[71]=0xD5
+  p8n[72]=0xAA
+  p8n[73]=0xAD
   # 74: sector in track
   # 75-777: nibblized sector
   # 778-780: data block trailer
-  conv_nibsOut[778]=0xDE
-  conv_nibsOut[779]=0xAA
-  #conv_nibsOut[780]=0xFF   
+  p8n[778]=0xDE
+  p8n[779]=0xAA
+  #p8n[780]=0xFF   
   # 781-1024: 243*0xFF padding sync
 init_nibsOut()
 
