@@ -18,11 +18,10 @@ sony_to_disk_byte = bytearray([
     0xF7, 0xF9, 0xFA, 0xFB,  0xFC, 0xFD, 0xFE, 0xFF
 ])
 
-# nibblize35 tmp store
+# tmp storage for sony_nibblize35
 nib1=bytearray(175)
 nib2=bytearray(175)
 nib3=bytearray(175)
-
 @micropython.viper
 def sony_nibblize35(dataIn_ba,nib_ptr_ba,offset:int):
   dataIn=ptr8(addressof(dataIn_ba))
@@ -96,7 +95,8 @@ def sony_nibblize35(dataIn_ba,nib_ptr_ba,offset:int):
   j+=1
   nib_ptr[j]=s2d[c1&0x3F]
 
-conv_dataIn=bytearray(524)
+conv_dataIn=bytearray(524) # filled with 0
+# trick to readinto at offset 12
 conv_dataInrd=memoryview(conv_dataIn)
 conv_dataInrd=memoryview(conv_dataInrd[12:524])
 
@@ -129,9 +129,7 @@ init_nibsOut()
 
 @micropython.viper
 def convert_dsk2mac(rfs,wfs):
-  # tmp storage
   dataIn=ptr8(addressof(conv_dataIn))
-  #dataInrd=ptr8(addressof(conv_dataInrd))
   nibsOut=ptr8(addressof(conv_nibsOut))
   s2d=ptr8(addressof(sony_to_disk_byte))
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
@@ -176,5 +174,3 @@ wfs=open("/sd/mac/disks/Disk605b.mac","wb")
 convert_dsk2mac(rfs,wfs)
 wfs.close()
 rfs.close()
-
-#convert_dsk2mac("Space_Invaders.dsk","Space_Invaders.mac") # 400K
