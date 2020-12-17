@@ -74,26 +74,26 @@ def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
     w4 =(b1[i]&0xC0)>>2
     w4|=(b2[i]&0xC0)>>4
     w4|=(b3[i]&0xC0)>>6
-    nib_ptr[j]=w4
+    nib_ptr[j]=sony_to_disk_byte[w4]
     j+=1
-    nib_ptr[j]=w1
+    nib_ptr[j]=sony_to_disk_byte[w1]
     j+=1
-    nib_ptr[j]=w2
+    nib_ptr[j]=sony_to_disk_byte[w2]
     j+=1
     if i!=174:
-      nib_ptr[j]=w3
+      nib_ptr[j]=sony_to_disk_byte[w3]
       j+=1
   # reverse to file write order
-  csum[3]=c1&0x3F
-  csum[2]=c2&0x3F
-  csum[1]=c3&0x3F
-  csum[0]=c4&0x3F
+  csum[3]=sony_to_disk_byte[c1&0x3F]
+  csum[2]=sony_to_disk_byte[c2&0x3F]
+  csum[1]=sony_to_disk_byte[c3&0x3F]
+  csum[0]=sony_to_disk_byte[c4&0x3F]
 
 conv_dataIn=bytearray(524)
 conv_nibOut=bytearray(699)
-conv_nibsecOut=bytearray(1024)
-for i in range(1024):
-  conv_nibsecOut[i]=0xFF
+#conv_nibsOut=bytearray(1024)
+#for i in range(1024):
+#  conv_nibsOut[i]=0xFF
 conv_dataChecksum=bytearray(4)
 conv_ba56xFF=bytearray(56)
 conv_ba243xFF=bytearray(243)
@@ -143,10 +143,10 @@ def convert_dsk2mac(src,dst):
     # convert the sector data
     mess_sony_nibblize35(dataIn, nibOut, dataChecksum)
     # in-place sony_to_disk_byte
-    for i in range(nibCount):
-      nibOut[i]=sony_to_disk_byte[nibOut[i]]
-    for i in range(4):
-      dataChecksum[i]=sony_to_disk_byte[dataChecksum[i]]
+    #for i in range(nibCount):
+    #  nibOut[i]=sony_to_disk_byte[nibOut[i]]
+    #for i in range(4):
+    #  dataChecksum[i]=sony_to_disk_byte[dataChecksum[i]]
     # write the sector data and the checksum
     wfs.write(nibOut)
     wfs.write(dataChecksum)
