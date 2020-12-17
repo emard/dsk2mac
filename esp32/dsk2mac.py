@@ -97,19 +97,38 @@ def sony_nibblize35(dataIn_ba,nib_ptr_ba,offset:int):
   nib_ptr[j]=s2d[c1&0x3F]
 
 conv_dataIn=bytearray(524)
-conv_nibOut=bytearray(703)
-conv_dataChecksum=bytearray(4)
-conv_ba56xFF=bytearray(56)
-for i in range(56):
-  conv_ba56xFF[i]=0xFF
-conv_ba243xFF=bytearray(243)
-for i in range(243):
-  conv_ba243xFF[i]=0xFF
+conv_nibsOut=bytearray(1024)
+@micropython.viper
+def init_nibsOut():
+  p8n=ptr8(addressof(conv_nibsOut))
+  # 56+19+703+3+243=1024
+  for i in range(1024):
+    p8n[i]=0xFF
+  # 0-55: 56*0xFF sync
+  p8n[56]=0xD5
+  p8n[57]=0xAA
+  p8n[58]=0x96
+  # 59-63: track/sector/format/checksum
+  p8n[64]=0xDE
+  p8n[65]=0xAA
+  # 66-70: 0xFF sync
+  p8n[71]=0xD5
+  p8n[72]=0xAA
+  p8n[73]=0xAD
+  # 74: sector in track
+  # 75-777: nibblized sector
+  # 778-780: data block trailer
+  p8n[778]=0xDE
+  p8n[779]=0xAA
+  #p8n[780]=0xFF   
+  # 781-1024: 243*0xFF padding sync
+init_nibsOut()
+
 #@micropython.viper
 def convert_dsk2mac(rfs,wfs):
   # tmp storage
   dataIn=memoryview(conv_dataIn)
-  nibOut=memoryview(conv_nibOut)
+  nibsOut=memoryview(conv_nibsOut)
 
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
   rfs.seek(0,2) # end of file
@@ -121,34 +140,23 @@ def convert_dsk2mac(rfs,wfs):
   sectorInTrack=0
   offset=0
   while offset<rfs_Length:
-    wfs.write(conv_ba56xFF)
     trackLow=track&0x3F
     trackHigh=(side<<5)|(track>>6)
     checksum=(trackLow^sectorInTrack^trackHigh^format)&0x3F
-    wfs.write(bytearray([
-      0xd5,0xaa,0x96,
-      sony_to_disk_byte[trackLow],
-      sony_to_disk_byte[sectorInTrack],
-      sony_to_disk_byte[trackHigh],
-      sony_to_disk_byte[format],
-      sony_to_disk_byte[checksum],
-      0xde,0xaa])) # FIXME viper incompatible
-    # More syncs
-    wfs.write(bytearray([0xff,0xff,0xff,0xff,0xff]))
+    nibsOut[59]=sony_to_disk_byte[trackLow]
+    nibsOut[60]=sony_to_disk_byte[sectorInTrack]
+    nibsOut[61]=sony_to_disk_byte[trackHigh]
+    nibsOut[62]=sony_to_disk_byte[format]
+    nibsOut[63]=sony_to_disk_byte[checksum]
     # Data block
-    wfs.write(bytearray([0xd5,0xaa,0xad,sony_to_disk_byte[sectorInTrack]])) # FIXME viper incompatible
+    nibsOut[74]=sony_to_disk_byte[sectorInTrack]    
     # get the tags and sector data
     for i in range(12):
       dataIn[i]=0
-    rfs.readinto(dataIn[12:524]) # FIXME viper incompatible
+    rfs.readinto(dataIn[12:524]) # FIXME micropython incompatible
     # convert the sector data
-    sony_nibblize35(dataIn,nibOut,0)
-    # write the sector data and the checksum
-    wfs.write(nibOut)
-    # data block trailer
-    wfs.write(bytearray([0xde,0xaa,0xff]))
-    # padding to make a power of 2 size for encoded sectors
-    wfs.write(conv_ba243xFF)
+    sony_nibblize35(dataIn,nibsOut,75)
+    wfs.write(nibsOut)
     # next sector
     offset+=512
     sectorInTrack+=1
