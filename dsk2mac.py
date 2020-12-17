@@ -20,10 +20,10 @@ nib1=bytearray(175)
 nib2=bytearray(175)
 nib3=bytearray(175)
 
-def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
+# dataIn_ba: 524 bytes, dataOut_ba: 703 bytes
+def mess_sony_nibblize35(dataIn_ba,dataOut_ba):
   dataIn=memoryview(dataIn_ba)
-  nib_ptr=memoryview(nib_ptr_ba)
-  csum=memoryview(csum_ba)
+  nib_ptr=memoryview(dataOut_ba)
   b1=memoryview(nib1)
   b2=memoryview(nib2)
   b3=memoryview(nib3)
@@ -83,14 +83,17 @@ def mess_sony_nibblize35(dataIn_ba, nib_ptr_ba, csum_ba):
     if i!=174:
       nib_ptr[j]=sony_to_disk_byte[w3]
       j+=1
-  # reverse to file write order
-  csum[3]=sony_to_disk_byte[c1&0x3F]
-  csum[2]=sony_to_disk_byte[c2&0x3F]
-  csum[1]=sony_to_disk_byte[c3&0x3F]
-  csum[0]=sony_to_disk_byte[c4&0x3F]
+  # checksum at j=699
+  nib_ptr[j]=sony_to_disk_byte[c4&0x3F]
+  j+=1
+  nib_ptr[j]=sony_to_disk_byte[c3&0x3F]
+  j+=1
+  nib_ptr[j]=sony_to_disk_byte[c2&0x3F]
+  j+=1
+  nib_ptr[j]=sony_to_disk_byte[c1&0x3F]
 
 conv_dataIn=bytearray(524)
-conv_nibOut=bytearray(699)
+conv_nibOut=bytearray(703)
 #conv_nibsOut=bytearray(1024)
 #for i in range(1024):
 #  conv_nibsOut[i]=0xFF
@@ -135,15 +138,13 @@ def convert_dsk2mac(src,dst):
     wfs.write(bytearray([0xff,0xff,0xff,0xff,0xff]))
     # Data block
     wfs.write(bytearray([0xd5,0xaa,0xad,sony_to_disk_byte[sectorInTrack]]))
-    nibCount=699
     # get the tags and sector data
     for i in range(12):
       dataIn[i]=0
     rfs.readinto(dataIn[12:524]) # FIXME micropython incompatible
     # convert the sector data
-    mess_sony_nibblize35(dataIn, nibOut, dataChecksum)
+    mess_sony_nibblize35(dataIn,nibOut)
     wfs.write(nibOut)
-    wfs.write(dataChecksum)
     # data block trailer
     wfs.write(bytearray([0xde,0xaa,0xff]))
     # padding to make a power of 2 size for encoded sectors
