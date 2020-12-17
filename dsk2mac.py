@@ -21,7 +21,7 @@ nib2=bytearray(175)
 nib3=bytearray(175)
 
 # dataIn_ba: 524 bytes, dataOut_ba: 703 bytes
-def mess_sony_nibblize35(dataIn_ba,dataOut_ba):
+def mess_sony_nibblize35(dataIn_ba,dataOut_ba,offset):
   dataIn=memoryview(dataIn_ba)
   nib_ptr=memoryview(dataOut_ba)
   b1=memoryview(nib1)
@@ -66,7 +66,7 @@ def mess_sony_nibblize35(dataIn_ba,dataOut_ba):
     j+=1
   c4=((c1&0xC0)>>6)|((c2&0xC0)>>4)|((c3&0xC0)>>2)
   b3[174]=0
-  j=0
+  j=offset # offset writing to dataOut
   for i in range(0,175):
     w1=b1[i]&0x3F
     w2=b2[i]&0x3F
@@ -94,9 +94,32 @@ def mess_sony_nibblize35(dataIn_ba,dataOut_ba):
 
 conv_dataIn=bytearray(524)
 conv_nibOut=bytearray(703)
-#conv_nibsOut=bytearray(1024)
-#for i in range(1024):
-#  conv_nibsOut[i]=0xFF
+conv_nibsOut=bytearray(1024)
+
+def init_nibsOut():
+  # 56+19+703+3+243=1024
+  for i in range(1024):
+    conv_nibsOut[i]=0xFF
+  # 0-55 56*0xFF
+  conv_nibsOut[56]=0xd5
+  conv_nibsOut[57]=0xaa
+  conv_nibsOut[58]=0x96
+  # 59-63 track/sector/format info
+  conv_nibsOut[64]=0xde
+  conv_nibsOut[65]=0xaa
+  # 66-70 0xFF
+  conv_nibsOut[71]=0xd5
+  conv_nibsOut[72]=0xaa
+  conv_nibsOut[73]=0xad
+  # 74 sector in track
+  # 75-777 nibblized sector
+  # 778-780 data block trailer
+  conv_nibsOut[778]=0xde
+  conv_nibsOut[779]=0xaa
+  conv_nibsOut[780]=0xff   
+  # 781 - 1024 243*0xFF
+init_nibsOut()
+
 conv_dataChecksum=bytearray(4)
 conv_ba56xFF=bytearray(56)
 conv_ba243xFF=bytearray(243)
@@ -110,6 +133,7 @@ def convert_dsk2mac(src,dst):
 
   dataIn=memoryview(conv_dataIn)
   nibOut=memoryview(conv_nibOut)
+  nibsOut=memoryview(conv_nibsOut)
   dataChecksum=memoryview(conv_dataChecksum)
 
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
@@ -122,33 +146,41 @@ def convert_dsk2mac(src,dst):
   sectorInTrack=0
   offset=0
   while offset<rfs_Length:
-    wfs.write(conv_ba56xFF)
+    #wfs.write(conv_ba56xFF)
     trackLow=track&0x3F
     trackHigh=(side<<5)|(track>>6)
     checksum=(trackLow^sectorInTrack^trackHigh^format)&0x3F
-    wfs.write(bytearray([
-      0xd5,0xaa,0x96,
-      sony_to_disk_byte[trackLow],
-      sony_to_disk_byte[sectorInTrack],
-      sony_to_disk_byte[trackHigh],
-      sony_to_disk_byte[format],
-      sony_to_disk_byte[checksum],
-      0xde,0xaa]))
+    nibsOut[59]=sony_to_disk_byte[trackLow]
+    nibsOut[60]=sony_to_disk_byte[sectorInTrack]
+    nibsOut[61]=sony_to_disk_byte[trackHigh]
+    nibsOut[62]=sony_to_disk_byte[format]
+    nibsOut[63]=sony_to_disk_byte[checksum]
+    #wfs.write(bytearray([
+    #  0xd5,0xaa,0x96,
+    #  sony_to_disk_byte[trackLow],
+    #  sony_to_disk_byte[sectorInTrack],
+    #  sony_to_disk_byte[trackHigh],
+    #  sony_to_disk_byte[format],
+    #  sony_to_disk_byte[checksum],
+    #  0xde,0xaa]))
     # More syncs
-    wfs.write(bytearray([0xff,0xff,0xff,0xff,0xff]))
+    #wfs.write(bytearray([0xff,0xff,0xff,0xff,0xff]))
     # Data block
-    wfs.write(bytearray([0xd5,0xaa,0xad,sony_to_disk_byte[sectorInTrack]]))
+    nibsOut[74]=sony_to_disk_byte[sectorInTrack]    
+    #wfs.write(bytearray([0xd5,0xaa,0xad,sony_to_disk_byte[sectorInTrack]]))
     # get the tags and sector data
     for i in range(12):
       dataIn[i]=0
     rfs.readinto(dataIn[12:524]) # FIXME micropython incompatible
     # convert the sector data
-    mess_sony_nibblize35(dataIn,nibOut)
-    wfs.write(nibOut)
+    mess_sony_nibblize35(dataIn,nibsOut,75)
+    wfs.write(nibsOut)
+    #mess_sony_nibblize35(dataIn,nibOut,0)
+    #wfs.write(nibOut)
     # data block trailer
-    wfs.write(bytearray([0xde,0xaa,0xff]))
+    #wfs.write(bytearray([0xde,0xaa,0xff]))
     # padding to make a power of 2 size for encoded sectors
-    wfs.write(conv_ba243xFF)
+    #wfs.write(conv_ba243xFF)
     # next sector
     offset+=512
     sectorInTrack+=1
@@ -164,3 +196,4 @@ def convert_dsk2mac(src,dst):
 
 convert_dsk2mac("Disk605.dsk","Disk605b.mac") # 800K
 #convert_dsk2mac("Space_Invaders.dsk","Space_Invaders.mac") # 400K
+#convert_dsk2mac("mac_plus_games.dsk","mac_plus_games.mac") # 800K
