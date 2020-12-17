@@ -153,7 +153,7 @@ def convert_dsk2mac(rfs,wfs):
     # get the tags and sector data
     for i in range(12):
       dataIn[i]=0
-    rfs.readinto(dataIn[12:524]) # FIXME micropython incompatible
+    rfs.readinto(dataIn[12:524]) # FIXME viper incompatible
     # convert the sector data
     sony_nibblize35(dataIn,nibsOut,75)
     wfs.write(nibsOut)
@@ -167,8 +167,6 @@ def convert_dsk2mac(rfs,wfs):
       else:
         track+=1
         side=0
-  wfs.close()
-  rfs.close()
 
 rfs=open("/sd/mac/disks/Disk605.dsk","rb")
 wfs=open("/sd/mac/disks/Disk605b.mac","wb")
