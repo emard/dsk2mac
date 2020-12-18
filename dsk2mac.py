@@ -19,7 +19,6 @@ sony_to_disk_byte = bytearray([
 nib1=bytearray(175)
 nib2=bytearray(175)
 nib3=bytearray(175)
-
 # dataIn_ba: 524 bytes, dataOut_ba: 703 bytes
 def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
   dataIn=memoryview(dataIn_ba)
@@ -92,7 +91,6 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
   j+=1
   nib_ptr[j]=sony_to_disk_byte[c1&0x3F]
 
-conv_dataIn=bytearray(524)
 conv_nibsOut=bytearray(1024)
 def init_nibsOut():
   p8n=memoryview(conv_nibsOut)
@@ -119,54 +117,48 @@ def init_nibsOut():
   # 781-1024: 243*0xFF padding sync
 init_nibsOut()
 
-conv_dataChecksum=bytearray(4)
-def convert_dsk2mac(src,dst):
-  rfs=open(src,"rb")
-  wfs=open(dst,"wb")
-
-  dataIn=memoryview(conv_dataIn)
-  nibsOut=memoryview(conv_nibsOut)
-
+# dsk=bytearray(524)
+# nib=bytearray(1024)
+# track=0-79, side=0-1, sector=0-11
+def convert_sector(dsk,nib,track:int,side:int,sector:int):
+  nibsOut=memoryview(nib)
+  s2d=memoryview(sony_to_disk_byte)
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
+  trackLow=track&0x3F
+  trackHigh=(side<<5)|(track>>6)
+  checksum=(trackLow^sector^trackHigh^format)&0x3F
+  nibsOut[59]=s2d[trackLow]
+  nibsOut[60]=s2d[sector]
+  nibsOut[61]=s2d[trackHigh]
+  nibsOut[62]=s2d[format]
+  nibsOut[63]=s2d[checksum]
+  # data block
+  nibsOut[74]=s2d[sector]    
+  # convert the sector data
+  sony_nibblize35(dsk,nib,75)
+
+conv_dataIn=bytearray(524) # all filled with 0
+# first 12 bytes must keep 0, trick to readinto at offset 12
+conv_dataInrd=memoryview(conv_dataIn)
+conv_dataInrd=memoryview(conv_dataInrd[12:524])
+def convert_dsk2mac(rfs,wfs):
   rfs.seek(0,2) # end of file
   rfs_Length=int(rfs.tell())
   rfs.seek(0) # rewind to start of file
   numSides=rfs_Length//409600
-  side=0
-  track=0
-  sectorInTrack=0
-  offset=0
-  while offset<rfs_Length:
-    trackLow=track&0x3F
-    trackHigh=(side<<5)|(track>>6)
-    checksum=(trackLow^sectorInTrack^trackHigh^format)&0x3F
-    nibsOut[59]=sony_to_disk_byte[trackLow]
-    nibsOut[60]=sony_to_disk_byte[sectorInTrack]
-    nibsOut[61]=sony_to_disk_byte[trackHigh]
-    nibsOut[62]=sony_to_disk_byte[format]
-    nibsOut[63]=sony_to_disk_byte[checksum]
-    # Data block
-    nibsOut[74]=sony_to_disk_byte[sectorInTrack]    
-    # get the tags and sector data
-    for i in range(12):
-      dataIn[i]=0
-    rfs.readinto(dataIn[12:524]) # FIXME micropython incompatible
-    # convert the sector data
-    sony_nibblize35(dataIn,nibsOut,75)
-    wfs.write(nibsOut)
-    # next sector
-    offset+=512
-    sectorInTrack+=1
-    if sectorInTrack==12-track//16:
-      sectorInTrack=0
-      if numSides==2 and side==0:
-        side=1
-      else:
-        track+=1
-        side=0
-  wfs.close()
-  rfs.close()
+  for track in range(80):
+    for side in range(numSides):
+      for sector in range(12-track//16):
+        rfs.readinto(conv_dataInrd)
+        convert_sector(conv_dataIn,conv_nibsOut,track,side,sector)
+        wfs.write(conv_nibsOut)
 
-convert_dsk2mac("Disk605.dsk","Disk605b.mac") # 800K
+rfs=open("Disk605.dsk","rb")
+wfs=open("Disk605b.mac","wb")
+convert_dsk2mac(rfs,wfs)
+wfs.close()
+rfs.close()
+
+#convert_dsk2mac("Disk605.dsk","Disk605b.mac") # 800K
 #convert_dsk2mac("Space_Invaders.dsk","Space_Invaders.mac") # 400K
 #convert_dsk2mac("mac_plus_games.dsk","mac_plus_games.mac") # 800K
