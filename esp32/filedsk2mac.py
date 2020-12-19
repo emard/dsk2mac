@@ -7,10 +7,7 @@
 from uctypes import addressof
 import dsk2mac
 
-conv_dataIn=bytearray(524) # filled with 0
-# trick to readinto at offset 12
-conv_dataInrd=memoryview(conv_dataIn)
-conv_dataInrd=memoryview(conv_dataInrd[12:524])
+conv_dataIn=bytearray(512)
 conv_nibsOut=bytearray(1024)
 @micropython.viper
 def convert_dsk2mac(rfs,wfs):
@@ -22,8 +19,8 @@ def convert_dsk2mac(rfs,wfs):
   for track in range(80):
     for side in range(numSides):
       for sector in range(12-track//16):
-        rfs.readinto(conv_dataInrd)
-        dsk2mac.convert_sector(conv_dataIn,conv_nibsOut,track,side,sector)
+        rfs.readinto(conv_dataIn)
+        dsk2mac.convert_sector(conv_dataIn,0,conv_nibsOut,track,side,sector)
         wfs.write(conv_nibsOut)
 
 rfs=open("/sd/mac/disks/Disk605.dsk","rb")
