@@ -20,7 +20,7 @@ nib1=bytearray(175)
 nib2=bytearray(175)
 nib3=bytearray(175)
 # dataIn_ba: 512 bytes, dataOut_ba: 703 bytes
-def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
+def sony_nibblize35(dataIn_ba,roffset:int,dataOut_ba,woffset:int):
   dataIn=memoryview(dataIn_ba)
   nib_ptr=memoryview(dataOut_ba)
   b1=memoryview(nib1)
@@ -40,7 +40,7 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
       c1+=1
     val=0
     if i>=0:
-      val=dataIn[i]
+      val=dataIn[i+roffset]
       c3+=val
     i+=1
     # ADDX?
@@ -50,7 +50,7 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
     b1[j]=val^c1
     val=0
     if i>=0:
-      val=dataIn[i]
+      val=dataIn[i+roffset]
       c2+=val
     i+=1
     if c3>0xFF:
@@ -61,7 +61,7 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
       break
     val=0
     if i>=0:
-      val=dataIn[i]
+      val=dataIn[i+roffset]
       c1+=val
     i+=1
     if c2>0xFF:
@@ -71,7 +71,7 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
     j+=1
   c4=((c1&0xC0)>>6)|((c2&0xC0)>>4)|((c3&0xC0)>>2)
   b3[174]=0
-  j=offset # offset writing to dataOut
+  j=woffset # offset writing to dataOut
   for i in range(0,175):
     w1=b1[i]&0x3F
     w2=b2[i]&0x3F
@@ -141,7 +141,7 @@ def convert_sector(dsk,nib,track:int,side:int,sector:int):
   # data block
   nibsOut[74]=s2d[sector]    
   # convert the sector data
-  sony_nibblize35(dsk,nib,75)
+  sony_nibblize35(dsk,0,nib,75)
 
 conv_dataIn=bytearray(512)
 def convert_dsk2mac(rfs,wfs):
