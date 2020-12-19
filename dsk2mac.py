@@ -19,7 +19,7 @@ sony_to_disk_byte = bytearray([
 nib1=bytearray(175)
 nib2=bytearray(175)
 nib3=bytearray(175)
-# dataIn_ba: 524 bytes, dataOut_ba: 703 bytes
+# dataIn_ba: 512 bytes, dataOut_ba: 703 bytes
 def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
   dataIn=memoryview(dataIn_ba)
   nib_ptr=memoryview(dataOut_ba)
@@ -28,7 +28,7 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
   b3=memoryview(nib3)
   # Copy from the user's buffer to our buffer, while computing
   # the three-byte data checksum
-  i=0
+  i=-12 # prepend 12 bytes of 0
   j=0
   c1=0
   c2=0
@@ -38,26 +38,32 @@ def sony_nibblize35(dataIn_ba,dataOut_ba,offset):
     c1=(c1&0xFF)<<1
     if (c1&0x0100)!=0:
       c1+=1
-    val=dataIn[i]
+    val=0
+    if i>=0:
+      val=dataIn[i]
+      c3+=val
     i+=1
     # ADDX?
-    c3+=val
     if (c1&0x0100)!=0:
       c3+=1
       c1&=0xFF
     b1[j]=val^c1
-    val=dataIn[i]
+    val=0
+    if i>=0:
+      val=dataIn[i]
+      c2+=val
     i+=1
-    c2+=val
     if c3>0xFF:
       c2+=1
       c3&=0xFF
     b2[j]=val^c3
-    if i==524:
+    if i>=512:
       break
-    val=dataIn[i]
+    val=0
+    if i>=0:
+      val=dataIn[i]
+      c1+=val
     i+=1
-    c1+=val
     if c2>0xFF:
       c1+=1
       c2&=0xFF
@@ -117,7 +123,7 @@ def init_nibsOut():
   # 781-1024: 243*0xFF padding sync
 init_nibsOut()
 
-# dsk=bytearray(524)
+# dsk=bytearray(512)
 # nib=bytearray(1024)
 # track=0-79, side=0-1, sector=0-11
 def convert_sector(dsk,nib,track:int,side:int,sector:int):
@@ -137,10 +143,7 @@ def convert_sector(dsk,nib,track:int,side:int,sector:int):
   # convert the sector data
   sony_nibblize35(dsk,nib,75)
 
-conv_dataIn=bytearray(524) # all filled with 0
-# first 12 bytes must keep 0, trick to readinto at offset 12
-conv_dataInrd=memoryview(conv_dataIn)
-conv_dataInrd=memoryview(conv_dataInrd[12:524])
+conv_dataIn=bytearray(512)
 def convert_dsk2mac(rfs,wfs):
   rfs.seek(0,2) # end of file
   rfs_Length=int(rfs.tell())
@@ -149,16 +152,14 @@ def convert_dsk2mac(rfs,wfs):
   for track in range(80):
     for side in range(numSides):
       for sector in range(12-track//16):
-        rfs.readinto(conv_dataInrd)
+        rfs.readinto(conv_dataIn)
         convert_sector(conv_dataIn,conv_nibsOut,track,side,sector)
         wfs.write(conv_nibsOut)
 
 rfs=open("Disk605.dsk","rb")
 wfs=open("Disk605b.mac","wb")
+#rfs=open("Space_Invaders.dsk","rb")
+#wfs=open("Space_Invaders.mac","wb")
 convert_dsk2mac(rfs,wfs)
 wfs.close()
 rfs.close()
-
-#convert_dsk2mac("Disk605.dsk","Disk605b.mac") # 800K
-#convert_dsk2mac("Space_Invaders.dsk","Space_Invaders.mac") # 400K
-#convert_dsk2mac("mac_plus_games.dsk","mac_plus_games.mac") # 800K
