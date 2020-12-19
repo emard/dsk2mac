@@ -126,7 +126,7 @@ init_nibsOut()
 # dsk=bytearray(512)
 # nib=bytearray(1024)
 # track=0-79, side=0-1, sector=0-11
-def convert_sector(dsk,nib,track:int,side:int,sector:int):
+def convert_sector(dsk,roffset:int,nib,track:int,side:int,sector:int):
   nibsOut=memoryview(nib)
   s2d=memoryview(sony_to_disk_byte)
   format=0x22 # 0x22 = MacOS double-sided, 0x02 = single sided
@@ -141,7 +141,7 @@ def convert_sector(dsk,nib,track:int,side:int,sector:int):
   # data block
   nibsOut[74]=s2d[sector]    
   # convert the sector data
-  sony_nibblize35(dsk,0,nib,75)
+  sony_nibblize35(dsk,roffset,nib,75)
 
 conv_dataIn=bytearray(512)
 def convert_dsk2mac(rfs,wfs):
@@ -153,7 +153,7 @@ def convert_dsk2mac(rfs,wfs):
     for side in range(numSides):
       for sector in range(12-track//16):
         rfs.readinto(conv_dataIn)
-        convert_sector(conv_dataIn,conv_nibsOut,track,side,sector)
+        convert_sector(conv_dataIn,0,conv_nibsOut,track,side,sector)
         wfs.write(conv_nibsOut)
 
 rfs=open("Disk605.dsk","rb")
